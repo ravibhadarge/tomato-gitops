@@ -1,0 +1,22 @@
+nohup: ignoring input
+
+> utils@1.0.0 dev
+> concurrently "tsc --watch" "node --watch dist/index.js"
+
+[0] [2J[3J[H10:04:57 AM - Starting compilation in watch mode...
+[0] 
+[1] ◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+[1] ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[1] ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+[1] Utils service is running on port 5002
+[1] 🐇 connected To Rabbitmq
+[0] 
+[0] 10:05:06 AM - Found 0 errors. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+[1] ◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+[1] ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+[1] Utils service is running on port 5002
+[1] 🐇 connected To Rabbitmq
+[1] node --watch dist/index.js exited with code SIGTERM
+[0] tsc --watch exited with code SIGTERM

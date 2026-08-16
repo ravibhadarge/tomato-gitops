@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: tomato
+spec:
+  selector:
+    app: auth
+  ports:
+  - port: 5000
+    targetPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: restaurant
+  namespace: tomato
+spec:
+  selector:
+    app: restaurant
+  ports:
+  - port: 5001
+    targetPort: 5001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: utils
+  namespace: tomato
+spec:
+  selector:
+    app: utils
+  ports:
+  - port: 5002
+    targetPort: 5002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: realtime
+  namespace: tomato
+spec:
+  selector:
+    app: realtime
+  ports:
+  - port: 5004
+    targetPort: 5004
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rider
+  namespace: tomato
+spec:
+  selector:
+    app: rider
+  ports:
+  - port: 5005
+    targetPort: 5005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin
+  namespace: tomato
+spec:
+  selector:
+    app: admin
+  ports:
+  - port: 5006
+    targetPort: 5006

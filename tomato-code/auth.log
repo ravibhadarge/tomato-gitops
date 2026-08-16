@@ -1,0 +1,32 @@
+nohup: ignoring input
+
+> auth@1.0.0 dev
+> concurrently "tsc --watch" "node --watch dist/index.js"
+
+[0] [2J[3J[H10:19:14 AM - Starting compilation in watch mode...
+[0] 
+[1] ◇ injected env (5) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+[1] ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[1] Auth service is running on port 5000
+[1] connected to mongodb
+[0] 
+[0] 10:19:43 AM - Found 0 errors. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (5) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[1] ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+[1] Auth service is running on port 5000
+[1] connected to mongodb
+[0] [2J[3J[H11:05:25 AM - File change detected. Starting incremental compilation...
+[0] 
+[0] 
+[0] 11:05:31 AM - Found 0 errors. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (5) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+[1] ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+[1] Auth service is running on port 5000
+[1] connected to mongodb
+[1] TOKEN SUCCESS
+[1] TOKEN SUCCESS
+[1] TOKEN SUCCESS
+[1] node --watch dist/index.js exited with code SIGTERM
+[0] tsc --watch exited with code SIGTERM

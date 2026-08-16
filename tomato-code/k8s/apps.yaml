@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+      - name: auth
+        image: ravibhadarge/tomato-auth:v1.0.0
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restaurant
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restaurant
+  template:
+    metadata:
+      labels:
+        app: restaurant
+    spec:
+      containers:
+      - name: restaurant
+        image: ravibhadarge/tomato-restaurant:v1.0.0
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rider
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rider
+  template:
+    metadata:
+      labels:
+        app: rider
+    spec:
+      containers:
+      - name: rider
+        image: ravibhadarge/tomato-rider:v1.0.0
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utils
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: utils
+  template:
+    metadata:
+      labels:
+        app: utils
+    spec:
+      containers:
+      - name: utils
+        image: ravibhadarge/tomato-utils:v1.0.0
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: realtime
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: realtime
+  template:
+    metadata:
+      labels:
+        app: realtime
+    spec:
+      containers:
+      - name: realtime
+        image: ravibhadarge/tomato-realtime:v1.0.0
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin
+  namespace: tomato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin
+  template:
+    metadata:
+      labels:
+        app: admin
+    spec:
+      containers:
+      - name: admin
+        image: ravibhadarge/tomato-admin:v1.0.0
+        imagePullPolicy: IfNotPresent

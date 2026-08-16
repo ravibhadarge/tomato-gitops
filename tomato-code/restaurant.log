@@ -1,0 +1,50 @@
+nohup: ignoring input
+
+> restaurant@1.0.0 dev
+> concurrently "tsc --watch" "node --watch dist/index.js"
+
+[0] [2J[3J[H10:04:57 AM - Starting compilation in watch mode...
+[0] 
+[1] ◇ injected env (9) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+[1] 🐇 connected To Rabbitmq(restaurant service)
+[1] Restaurant service is running on port 5001
+[1] MongoParseError: Invalid scheme, expected connection string to start with "mongodb://" or "mongodb+srv://"
+[1]     at new ConnectionString (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb-connection-string-url/lib/index.js:85:19)
+[1]     at parseOptions (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb/lib/connection_string.js:202:17)
+[1]     at new MongoClient (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb/lib/mongo_client.js:67:61)
+[1]     at NativeConnection.createClient (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:338:14)
+[1]     at NativeConnection.openUri (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/connection.js:1081:34)
+[1]     at Mongoose.connect (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/mongoose.js:475:15)
+[1]     at connectDB (file:///home/ravi/pj/tomato-code/services/restaurant/dist/config/db.js:4:24)
+[1]     at Server.<anonymous> (file:///home/ravi/pj/tomato-code/services/restaurant/dist/index.js:26:5)
+[1]     at Server.f (/home/ravi/pj/tomato-code/services/restaurant/node_modules/once/once.js:25:25)
+[1]     at Object.onceWrapper (node:events:633:28)
+[0] src/controllers/order.ts(450,5): error TS2769: No overload matches this call.
+[0]   Overload 1 of 5, '(filter?: _QueryFilter<{ _id: ObjectId; createdAt: Date; $assertPopulated: <Paths = {}>(path: string | string[], values?: Partial<Paths> | undefined) => PopulateDocumentResult<IOrder, Paths, (Omit<...> & PopulatePathToRawDocType<...>)[] | ... 1 more ... | null, any>; ... 246 more ...; "deliveryAddress.fromattedAddress": string; }> | undefined, projection?: ProjectionType<...> | ... 1 more ... | undefined, options?: (QueryOptions<...> & Abortable) | ... 1 more ... | undefined): Query<...>', gave the following error.
+[0]     Type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to type 'StrictCondition<ApplyBasicQueryCasting<string>> | undefined'.
+[0]       Type '(string | ParsedQs)[]' is not assignable to type 'StrictCondition<ApplyBasicQueryCasting<string>> | undefined'.
+[0]         Type '(string | ParsedQs)[]' is not assignable to type '(string | RegExp)[]'.
+[0]           Type 'string | ParsedQs' is not assignable to type 'string | RegExp'.
+[0]             Type 'ParsedQs' is not assignable to type 'string | RegExp'.
+[0]               Type 'ParsedQs' is missing the following properties from type 'RegExp': exec, test, source, global, and 13 more.
+[0]   Overload 2 of 5, '(filter?: Query<any, any, {}, unknown, "find", Record<string, never>> | undefined, projection?: ProjectionType<IOrder> | null | undefined, options?: (QueryOptions<...> & Abortable) | ... 1 more ... | undefined): Query<...>', gave the following error.
+[0]     Object literal may only specify known properties, and 'riderId' does not exist in type 'Query<any, any, {}, unknown, "find", Record<string, never>>'.
+[0] 
+[0] 10:05:12 AM - Found 1 error. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (9) from .env // tip: ⌘ enable debugging { debug: true }
+[1] 🐇 connected To Rabbitmq(restaurant service)
+[1] Restaurant service is running on port 5001
+[1] MongoParseError: Invalid scheme, expected connection string to start with "mongodb://" or "mongodb+srv://"
+[1]     at new ConnectionString (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb-connection-string-url/lib/index.js:85:19)
+[1]     at parseOptions (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb/lib/connection_string.js:202:17)
+[1]     at new MongoClient (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongodb/lib/mongo_client.js:67:61)
+[1]     at NativeConnection.createClient (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:338:14)
+[1]     at NativeConnection.openUri (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/connection.js:1081:34)
+[1]     at Mongoose.connect (/home/ravi/pj/tomato-code/services/restaurant/node_modules/mongoose/lib/mongoose.js:475:15)
+[1]     at connectDB (file:///home/ravi/pj/tomato-code/services/restaurant/dist/config/db.js:4:24)
+[1]     at Server.<anonymous> (file:///home/ravi/pj/tomato-code/services/restaurant/dist/index.js:26:5)
+[1]     at Server.f (/home/ravi/pj/tomato-code/services/restaurant/node_modules/once/once.js:25:25)
+[1]     at Object.onceWrapper (node:events:633:28)
+[1] node --watch dist/index.js exited with code SIGTERM
+[0] tsc --watch exited with code SIGTERM

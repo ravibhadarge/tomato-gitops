@@ -1,0 +1,42 @@
+nohup: ignoring input
+
+> rider@1.0.0 dev
+> concurrently "tsc --watch" "node --watch dist/index.js"
+
+[0] [2J[3J[H10:04:57 AM - Starting compilation in watch mode...
+[0] 
+[1] ◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+[1] 🐇 connected To Rabbitmq(rider service)
+[1] Starting to consume from: order_ready_queue
+[1] Rider service is running on port 5005
+[1] MongoParseError: Invalid scheme, expected connection string to start with "mongodb://" or "mongodb+srv://"
+[1]     at new ConnectionString (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb-connection-string-url/lib/index.js:85:19)
+[1]     at parseOptions (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb/lib/connection_string.js:202:17)
+[1]     at new MongoClient (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb/lib/mongo_client.js:67:61)
+[1]     at NativeConnection.createClient (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:338:14)
+[1]     at NativeConnection.openUri (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/connection.js:1081:34)
+[1]     at Mongoose.connect (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/mongoose.js:475:15)
+[1]     at connectDB (file:///home/ravi/pj/tomato-code/services/rider/dist/config/db.js:4:24)
+[1]     at Server.<anonymous> (file:///home/ravi/pj/tomato-code/services/rider/dist/index.js:17:5)
+[1]     at Server.f (/home/ravi/pj/tomato-code/services/rider/node_modules/once/once.js:25:25)
+[1]     at Object.onceWrapper (node:events:633:28)
+[0] 
+[0] 10:05:11 AM - Found 0 errors. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+[1] 🐇 connected To Rabbitmq(rider service)
+[1] Starting to consume from: order_ready_queue
+[1] Rider service is running on port 5005
+[1] MongoParseError: Invalid scheme, expected connection string to start with "mongodb://" or "mongodb+srv://"
+[1]     at new ConnectionString (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb-connection-string-url/lib/index.js:85:19)
+[1]     at parseOptions (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb/lib/connection_string.js:202:17)
+[1]     at new MongoClient (/home/ravi/pj/tomato-code/services/rider/node_modules/mongodb/lib/mongo_client.js:67:61)
+[1]     at NativeConnection.createClient (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js:338:14)
+[1]     at NativeConnection.openUri (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/connection.js:1081:34)
+[1]     at Mongoose.connect (/home/ravi/pj/tomato-code/services/rider/node_modules/mongoose/lib/mongoose.js:475:15)
+[1]     at connectDB (file:///home/ravi/pj/tomato-code/services/rider/dist/config/db.js:4:24)
+[1]     at Server.<anonymous> (file:///home/ravi/pj/tomato-code/services/rider/dist/index.js:17:5)
+[1]     at Server.f (/home/ravi/pj/tomato-code/services/rider/node_modules/once/once.js:25:25)
+[1]     at Object.onceWrapper (node:events:633:28)
+[1] node --watch dist/index.js exited with code SIGTERM
+[0] tsc --watch exited with code SIGTERM

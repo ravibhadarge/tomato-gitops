@@ -1,0 +1,16 @@
+nohup: ignoring input
+
+> realtime@1.0.0 dev
+> concurrently "tsc --watch" "node --watch dist/index.js"
+
+[0] [2J[3J[H10:04:57 AM - Starting compilation in watch mode...
+[0] 
+[1] ◇ injected env (3) from .env // tip: ⌘ suppress logs { quiet: true }
+[1] Realtime service is running port 5004
+[0] 
+[0] 10:05:06 AM - Found 0 errors. Watching for file changes.
+[1] Restarting 'dist/index.js'
+[1] ◇ injected env (3) from .env // tip: ⌘ suppress logs { quiet: true }
+[1] Realtime service is running port 5004
+[1] node --watch dist/index.js exited with code SIGTERM
+[0] tsc --watch exited with code SIGTERM

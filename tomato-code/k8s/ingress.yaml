@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tomato-ingress
+  namespace: tomato
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: tomato.local
+    http:
+      paths:
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth
+            port:
+              number: 5000
+      - path: /restaurant
+        pathType: Prefix
+        backend:
+          service:
+            name: restaurant
+            port:
+              number: 5001
+      - path: /rider
+        pathType: Prefix
+        backend:
+          service:
+            name: rider
+            port:
+              number: 5005
+      - path: /utils
+        pathType: Prefix
+        backend:
+          service:
+            name: utils
+            port:
+              number: 5002
+      - path: /admin
+        pathType: Prefix
+        backend:
+          service:
+            name: admin
+            port:
+              number: 5006
