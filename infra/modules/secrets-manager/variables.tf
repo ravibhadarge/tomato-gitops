@@ -20,11 +20,6 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "jwt_secret" {
-  description = "JWT signing secret to store in Secrets Manager"
-  type        = string
-  sensitive   = true
-}
 
 variable "db_host" {
   description = "RDS endpoint hostname to store alongside credentials"

@@ -1,10 +1,10 @@
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name                    = "/pharma/${var.env}/db-credentials"
-  description             = "Database credentials for the pharma ${var.env} environment"
+  name                    = "/tomato/${var.env}/db-credentials"
+  description             = "Database credentials for the tomato ${var.env} environment"
   recovery_window_in_days = 0
 
   tags = {
-    Name    = "/pharma/${var.env}/db-credentials"
+    Name    = "/tomato/${var.env}/db-credentials"
     Env     = var.env
     Project = var.project
   }
@@ -19,21 +19,4 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
   })
 }
 
-resource "aws_secretsmanager_secret" "jwt_secret" {
-  name                    = "/pharma/${var.env}/jwt-secret"
-  description             = "JWT signing secret for the pharma ${var.env} environment"
-  recovery_window_in_days = 0
 
-  tags = {
-    Name    = "/pharma/${var.env}/jwt-secret"
-    Env     = var.env
-    Project = var.project
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "jwt_secret" {
-  secret_id = aws_secretsmanager_secret.jwt_secret.id
-  secret_string = jsonencode({
-    secret = var.jwt_secret
-  })
-}

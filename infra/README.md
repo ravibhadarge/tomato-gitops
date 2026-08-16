@@ -133,308 +133,308 @@ envs/dev/main.tf
     |-- module "vpc"              --> modules/vpc/
     |-- module "eks"              --> modules/eks/   (depends on vpc outputs)
     |-- module "rds"              --> modules/rds/   (depends on vpc + eks outputs)
-    |-- module "ecr"              --> modules/ecr/
-    |-- module "iam"              --> modules/iam/   (depends on eks OIDC outputs)
-    └-- module "secrets_manager"  --> modules/secrets-manager/
-```
-
-Modules share data via outputs — for example, `module.eks.oidc_provider_arn` is passed
-into `module.iam` so the IAM trust policy references the exact OIDC provider created
-for this cluster, not a hardcoded ARN.
-
----
-
-### Network Traffic Flow
-
-```
-Internet
-    |
-    v
-AWS Network Load Balancer  (created by NGINX Ingress Controller Helm chart)
-    |  routes by URL path
-    |-- /          -->  pharma-ui       (React, port 80)
-    |-- /api/*     -->  api-gateway     (port 8080)
-                           |
-                           |-- /api/auth/*          --> auth-service        (8081)
-                           |-- /api/catalog/*       --> drug-catalog-svc    (8082)
-                           |-- /api/inventory/*     --> inventory-service   (8083)
-                           |-- /api/suppliers/*     --> supplier-service    (8084)
-                           |-- /api/manufacturing/* --> manufacturing-svc   (8085)
-                           └-- /api/notifications/* --> notification-svc    (3000)
-                                                            |
-                                                    All backend services
-                                                    pull secrets from
-                                                    AWS Secrets Manager
-                                                    via ESO (no passwords
-                                                    in pod spec or config)
-                                                            |
-                                                            v
-                                               RDS PostgreSQL (private subnet)
-```
-
----
-
-### GitHub Actions CI/CD Flow for Infrastructure
-
-```
-Developer creates feature branch in zen-infra
-    |
-    v
-git push origin feature/my-change
-    |
-    v
-Open Pull Request  -->  zen-infra GitHub Actions runs automatically:
-    |
-    |   [Terraform Plan job]
-    |   1. Checkout code
-    |   2. Setup Terraform 1.10.0
-    |   3. Configure AWS credentials  (static IAM keys from GitHub Secrets)
-    |   4. terraform fmt -check       --> fails if code is not formatted
-    |   5. terraform init             --> connects to S3 backend, downloads providers
-    |   6. terraform validate         --> syntax and logic check
-    |   7. terraform plan             --> shows what will change (saved as artifact)
-    |
-    |   Plan output is visible in the Actions tab. PR is blocked if plan fails.
-    |
-    v
-PR reviewed and merged to main
-    |
-    v
-[Terraform Plan job runs again on main - fresh plan]
-    |
-    v
-[Terraform Apply job - PAUSES for manual approval]
-    |
-    |   Go to: Actions --> running workflow --> "Review deployments" --> Approve
-    |
-    v
-[Terraform Apply runs]
-    |   8. terraform apply tfplan     --> provisions/updates AWS resources
-    |      (takes 15-25 min for EKS + RDS)
-    |
-    v
-Infrastructure updated in AWS
-    |
-    v
-EKS cluster is ready for Stage 2 (install NGINX Ingress, ArgoCD, ESO)
-```
-
----
-
-### Security Design Decisions
-
-| Decision | Why |
-|---|---|
-| Worker nodes in private subnets | Nodes not reachable from internet; only NLB is public |
-| RDS in private subnets | Database never exposed to internet; only EKS nodes can connect (port 5432 via SG rule) |
-| No static AWS keys in GitHub CI | GitHub Actions uses OIDC; credentials are short-lived (1 hour) and scoped to specific repos |
-| IRSA for pods | Pods never hold AWS credentials; they exchange a projected K8s token for short-lived STS credentials |
-| Secrets Manager (not ConfigMap) | DB passwords and JWT secret never live in Git or Kubernetes config; ESO syncs them at runtime |
-| ECR scan on push | Every image is automatically scanned for CVEs when pushed; results visible in ECR console |
-| S3 state with versioning | Terraform state is versioned — accidental corruption can be rolled back |
-
----
-
-## 2. Prerequisites
-
-Ensure the following tools are installed on your local machine before starting.
-
-### Required Tools
-
-| Tool | Minimum Version | Install |
-|---|---|---|
-| Terraform | 1.10.0+ | https://developer.hashicorp.com/terraform/install |
-| AWS CLI | 2.x | https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html |
-| Git | 2.x | https://git-scm.com/downloads |
-
-### Verify Installations
-
-```bash
-terraform version
-# Terraform v1.10.x
-
-aws --version
-# aws-cli/2.x.x
-
-git --version
-# git version 2.x.x
-```
-
-### Required Access
-
-- An AWS account with administrator access (or sufficient permissions — see Step 1)
-- A GitHub account
-- The zen-infra repository forked to your GitHub account
-
----
-
-## 3. Repository Structure
-
-```
-zen-infra/
-├── .github/
-│   ├── dependabot.yml                    # Automated dependency update config
-│   └── workflows/
-│       └── terraform.yml                 # CI/CD pipeline — plan + apply + destroy
-│
-├── envs/
-│   ├── dev/
-│   │   ├── backend.tf                    # S3 remote state config for dev
-│   │   ├── providers.tf                  # AWS, Kubernetes, TLS provider config
-│   │   ├── main.tf                       # Module calls with dev-specific values
-│   │   ├── variables.tf                  # Input variable declarations
-│   │   └── outputs.tf                    # Output values (cluster name, RDS endpoint)
-│   ├── qa/                               # QA environment (structure mirrors dev)
-│   └── prod/                             # Prod environment (structure mirrors dev)
-│
-└── modules/
-    ├── vpc/                              # VPC, subnets, IGW, NAT Gateway, route tables
-    ├── eks/                              # EKS cluster, node group, OIDC provider
-    ├── rds/                              # RDS PostgreSQL, subnet group, security group
-    ├── ecr/                              # ECR repositories and lifecycle policies
-    ├── iam/                              # GitHub Actions OIDC role and policy
-    └── secrets-manager/                  # Secrets Manager secrets for app credentials
-```
-
-**Key design decisions:**
-- **Directory-per-environment** (`envs/dev`, `envs/qa`, `envs/prod`) — complete isolation, separate state files, different resource sizing per environment
-- **Shared modules** — all environments call the same modules with different input values
-- **No `terraform.tfvars`** — secrets are never stored on disk, passed at runtime from GitHub Secrets
-
----
-
-## 4. Step 1 — AWS Account Setup
-
-### 4.1 Create an IAM User for Terraform (if not using OIDC)
-
-For the initial bootstrap (before OIDC is set up via Terraform), you need an IAM user with programmatic access.
-
-Go to **AWS Console → IAM → Users → Create user**:
-- Username: `terraform-ci`
-- Access type: Programmatic access
-- Permissions: Attach the following managed policies:
-  - `AdministratorAccess` (simplest for learning — scope down in production)
-
-Save the **Access Key ID** and **Secret Access Key** — you will need these in Step 5.
-
-> **Note for production**: Scope IAM permissions to only what Terraform needs — EC2, EKS, RDS, ECR, IAM, Secrets Manager, S3, VPC.
-
-### 4.2 Configure AWS CLI Locally
-
-```bash
-aws configure
-# AWS Access Key ID: <your-access-key-id>
-# AWS Secret Access Key: <your-secret-access-key>
-# Default region name: us-east-1
-# Default output format: json
-```
-
-Verify it works:
-
-```bash
-aws sts get-caller-identity
-# Should return your account ID, user ARN, and user ID
-```
-
----
-
-## 5. Step 2 — S3 State Backend Setup
-
-Terraform requires an S3 bucket to store its state file. This bucket must exist **before** running Terraform. Create it manually — you only do this once.
-
-### 5.1 Create the S3 Bucket
-
-Replace `ravibhadarge` with your actual GitHub username to make the bucket name unique.
-
-```bash
-# Create the bucket
-aws s3api create-bucket \
-  --bucket zen-pharma-terraform-state-ravibhadarge \
-  --region us-east-1
-
-# Enable versioning (allows state rollback)
-aws s3api put-bucket-versioning \
-  --bucket zen-pharma-terraform-state-ravibhadarge \
-  --versioning-configuration Status=Enabled
-
-# Enable encryption
-aws s3api put-bucket-encryption \
-  --bucket zen-pharma-terraform-state-ravibhadarge \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "AES256"
-      }
-    }]
-  }'
-
-# Block all public access
-aws s3api put-public-access-block \
-  --bucket zen-pharma-terraform-state-ravibhadarge \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-```
-
-### 5.2 Verify the Bucket
-
-```bash
-aws s3 ls s3://zen-pharma-terraform-state-ravibhadarge
-# Should return empty (no error)
-```
-
----
-
-## 6. Step 3 — Fork and Configure the Repository
-
-### 6.1 Fork the Repository
-
-1. Go to `github.com/your-github-username/zen-infra`
-2. Click **Fork** (top right)
-3. Select your account as the destination
-4. Clone your fork locally:
-
-```bash
-git clone https://github.com/ravibhadarge/zen-infra.git
-cd zen-infra
-```
-
----
-
-## 7. Step 4 — Update Configuration for Your Account
-
-You need to update four files to point to your S3 bucket and GitHub username.
-
-### 7.1 Update Backend Configuration
-
-Update the bucket name in all three environment backend files:
-
-**`envs/dev/backend.tf`**
-```hcl
-terraform {
-  backend "s3" {
-    bucket       = "zen-pharma-terraform-state-ravibhadarge"
-    key          = "envs/dev/terraform.tfstate"
-    region       = "us-east-1"
-    encrypt      = true
-    use_lockfile = true
-  }
-}
-```
-
-**`envs/qa/backend.tf`** — same change, key stays `envs/qa/terraform.tfstate`
-
-**`envs/prod/backend.tf`** — same change, key stays `envs/prod/terraform.tfstate`
-
-### 7.2 Update GitHub Organisation Variable
-
-In `envs/dev/variables.tf`, update the default value for `github_org`:
-
-```hcl
-variable "github_org" {
-  description = "GitHub username or organization"
-  type        = string
-  default     = "ravibhadarge"   # ← change this
-}
+# #     |-- module "ecr"              --> modules/ecr/
+# #     |-- module "iam"              --> modules/iam/   (depends on eks OIDC outputs)
+# #     └-- module "secrets_manager"  --> modules/secrets-manager/
+# # ```
+# # 
+# # Modules share data via outputs — for example, `module.eks.oidc_provider_arn` is passed
+# # into `module.iam` so the IAM trust policy references the exact OIDC provider created
+# # for this cluster, not a hardcoded ARN.
+# # 
+# # ---
+# # 
+# # ### Network Traffic Flow
+# # 
+# # ```
+# # Internet
+# #     |
+# #     v
+# # AWS Network Load Balancer  (created by NGINX Ingress Controller Helm chart)
+# #     |  routes by URL path
+# #     |-- /          -->  pharma-ui       (React, port 80)
+# #     |-- /api/*     -->  api-gateway     (port 8080)
+# #                            |
+# #                            |-- /api/auth/*          --> auth-service        (8081)
+# #                            |-- /api/catalog/*       --> drug-catalog-svc    (8082)
+# #                            |-- /api/inventory/*     --> inventory-service   (8083)
+# #                            |-- /api/suppliers/*     --> supplier-service    (8084)
+# #                            |-- /api/manufacturing/* --> manufacturing-svc   (8085)
+# #                            └-- /api/notifications/* --> notification-svc    (3000)
+# #                                                             |
+# #                                                     All backend services
+# #                                                     pull secrets from
+# #                                                     AWS Secrets Manager
+# #                                                     via ESO (no passwords
+# #                                                     in pod spec or config)
+# #                                                             |
+# #                                                             v
+# #                                                RDS PostgreSQL (private subnet)
+# # ```
+# # 
+# # ---
+# # 
+# # ### GitHub Actions CI/CD Flow for Infrastructure
+# # 
+# # ```
+# # Developer creates feature branch in zen-infra
+# #     |
+# #     v
+# # git push origin feature/my-change
+# #     |
+# #     v
+# # Open Pull Request  -->  zen-infra GitHub Actions runs automatically:
+# #     |
+# #     |   [Terraform Plan job]
+# #     |   1. Checkout code
+# #     |   2. Setup Terraform 1.10.0
+# #     |   3. Configure AWS credentials  (static IAM keys from GitHub Secrets)
+# #     |   4. terraform fmt -check       --> fails if code is not formatted
+# #     |   5. terraform init             --> connects to S3 backend, downloads providers
+# #     |   6. terraform validate         --> syntax and logic check
+# #     |   7. terraform plan             --> shows what will change (saved as artifact)
+# #     |
+# #     |   Plan output is visible in the Actions tab. PR is blocked if plan fails.
+# #     |
+# #     v
+# # PR reviewed and merged to main
+# #     |
+# #     v
+# # [Terraform Plan job runs again on main - fresh plan]
+# #     |
+# #     v
+# # [Terraform Apply job - PAUSES for manual approval]
+# #     |
+# #     |   Go to: Actions --> running workflow --> "Review deployments" --> Approve
+# #     |
+# #     v
+# # [Terraform Apply runs]
+# #     |   8. terraform apply tfplan     --> provisions/updates AWS resources
+# #     |      (takes 15-25 min for EKS + RDS)
+# #     |
+# #     v
+# # Infrastructure updated in AWS
+# #     |
+# #     v
+# # EKS cluster is ready for Stage 2 (install NGINX Ingress, ArgoCD, ESO)
+# # ```
+# # 
+# # ---
+# # 
+# # ### Security Design Decisions
+# # 
+# # | Decision | Why |
+# # |---|---|
+# # | Worker nodes in private subnets | Nodes not reachable from internet; only NLB is public |
+# # | RDS in private subnets | Database never exposed to internet; only EKS nodes can connect (port 5432 via SG rule) |
+# # | No static AWS keys in GitHub CI | GitHub Actions uses OIDC; credentials are short-lived (1 hour) and scoped to specific repos |
+# # | IRSA for pods | Pods never hold AWS credentials; they exchange a projected K8s token for short-lived STS credentials |
+# # | Secrets Manager (not ConfigMap) | DB passwords and JWT secret never live in Git or Kubernetes config; ESO syncs them at runtime |
+# # | ECR scan on push | Every image is automatically scanned for CVEs when pushed; results visible in ECR console |
+# # | S3 state with versioning | Terraform state is versioned — accidental corruption can be rolled back |
+# # 
+# # ---
+# # 
+# # ## 2. Prerequisites
+# # 
+# # Ensure the following tools are installed on your local machine before starting.
+# # 
+# # ### Required Tools
+# # 
+# # | Tool | Minimum Version | Install |
+# # |---|---|---|
+# # | Terraform | 1.10.0+ | https://developer.hashicorp.com/terraform/install |
+# # | AWS CLI | 2.x | https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html |
+# # | Git | 2.x | https://git-scm.com/downloads |
+# # 
+# # ### Verify Installations
+# # 
+# # ```bash
+# # terraform version
+# # # Terraform v1.10.x
+# # 
+# # aws --version
+# # # aws-cli/2.x.x
+# # 
+# # git --version
+# # # git version 2.x.x
+# # ```
+# # 
+# # ### Required Access
+# # 
+# # - An AWS account with administrator access (or sufficient permissions — see Step 1)
+# # - A GitHub account
+# # - The zen-infra repository forked to your GitHub account
+# # 
+# # ---
+# # 
+# # ## 3. Repository Structure
+# # 
+# # ```
+# # zen-infra/
+# # ├── .github/
+# # │   ├── dependabot.yml                    # Automated dependency update config
+# # │   └── workflows/
+# # │       └── terraform.yml                 # CI/CD pipeline — plan + apply + destroy
+# # │
+# # ├── envs/
+# # │   ├── dev/
+# # │   │   ├── backend.tf                    # S3 remote state config for dev
+# # │   │   ├── providers.tf                  # AWS, Kubernetes, TLS provider config
+# # │   │   ├── main.tf                       # Module calls with dev-specific values
+# # │   │   ├── variables.tf                  # Input variable declarations
+# # │   │   └── outputs.tf                    # Output values (cluster name, RDS endpoint)
+# # │   ├── qa/                               # QA environment (structure mirrors dev)
+# # │   └── prod/                             # Prod environment (structure mirrors dev)
+# # │
+# # └── modules/
+# #     ├── vpc/                              # VPC, subnets, IGW, NAT Gateway, route tables
+# #     ├── eks/                              # EKS cluster, node group, OIDC provider
+# #     ├── rds/                              # RDS PostgreSQL, subnet group, security group
+# #     ├── ecr/                              # ECR repositories and lifecycle policies
+# #     ├── iam/                              # GitHub Actions OIDC role and policy
+# #     └── secrets-manager/                  # Secrets Manager secrets for app credentials
+# # ```
+# # 
+# # **Key design decisions:**
+# # - **Directory-per-environment** (`envs/dev`, `envs/qa`, `envs/prod`) — complete isolation, separate state files, different resource sizing per environment
+# # - **Shared modules** — all environments call the same modules with different input values
+# # - **No `terraform.tfvars`** — secrets are never stored on disk, passed at runtime from GitHub Secrets
+# # 
+# # ---
+# # 
+# # ## 4. Step 1 — AWS Account Setup
+# # 
+# # ### 4.1 Create an IAM User for Terraform (if not using OIDC)
+# # 
+# # For the initial bootstrap (before OIDC is set up via Terraform), you need an IAM user with programmatic access.
+# # 
+# # Go to **AWS Console → IAM → Users → Create user**:
+# # - Username: `terraform-ci`
+# # - Access type: Programmatic access
+# # - Permissions: Attach the following managed policies:
+# #   - `AdministratorAccess` (simplest for learning — scope down in production)
+# # 
+# # Save the **Access Key ID** and **Secret Access Key** — you will need these in Step 5.
+# # 
+# # > **Note for production**: Scope IAM permissions to only what Terraform needs — EC2, EKS, RDS, ECR, IAM, Secrets Manager, S3, VPC.
+# # 
+# # ### 4.2 Configure AWS CLI Locally
+# # 
+# # ```bash
+# # aws configure
+# # # AWS Access Key ID: <your-access-key-id>
+# # # AWS Secret Access Key: <your-secret-access-key>
+# # # Default region name: us-east-1
+# # # Default output format: json
+# # ```
+# # 
+# # Verify it works:
+# # 
+# # ```bash
+# # aws sts get-caller-identity
+# # # Should return your account ID, user ARN, and user ID
+# # ```
+# # 
+# # ---
+# # 
+# # ## 5. Step 2 — S3 State Backend Setup
+# # 
+# # Terraform requires an S3 bucket to store its state file. This bucket must exist **before** running Terraform. Create it manually — you only do this once.
+# # 
+# # ### 5.1 Create the S3 Bucket
+# # 
+# # Replace `ravibhadarge` with your actual GitHub username to make the bucket name unique.
+# # 
+# # ```bash
+# # # Create the bucket
+# # aws s3api create-bucket \
+# #   --bucket zen-pharma-terraform-state-ravibhadarge \
+# #   --region us-east-1
+# # 
+# # # Enable versioning (allows state rollback)
+# # aws s3api put-bucket-versioning \
+# #   --bucket zen-pharma-terraform-state-ravibhadarge \
+# #   --versioning-configuration Status=Enabled
+# # 
+# # # Enable encryption
+# # aws s3api put-bucket-encryption \
+# #   --bucket zen-pharma-terraform-state-ravibhadarge \
+# #   --server-side-encryption-configuration '{
+# #     "Rules": [{
+# #       "ApplyServerSideEncryptionByDefault": {
+# #         "SSEAlgorithm": "AES256"
+# #       }
+# #     }]
+# #   }'
+# # 
+# # # Block all public access
+# # aws s3api put-public-access-block \
+# #   --bucket zen-pharma-terraform-state-ravibhadarge \
+# #   --public-access-block-configuration \
+# #     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+# # ```
+# # 
+# # ### 5.2 Verify the Bucket
+# # 
+# # ```bash
+# # aws s3 ls s3://zen-pharma-terraform-state-ravibhadarge
+# # # Should return empty (no error)
+# # ```
+# # 
+# # ---
+# # 
+# # ## 6. Step 3 — Fork and Configure the Repository
+# # 
+# # ### 6.1 Fork the Repository
+# # 
+# # 1. Go to `github.com/your-github-username/zen-infra`
+# # 2. Click **Fork** (top right)
+# # 3. Select your account as the destination
+# # 4. Clone your fork locally:
+# # 
+# # ```bash
+# # git clone https://github.com/ravibhadarge/zen-infra.git
+# # cd zen-infra
+# # ```
+# # 
+# # ---
+# # 
+# # ## 7. Step 4 — Update Configuration for Your Account
+# # 
+# # You need to update four files to point to your S3 bucket and GitHub username.
+# # 
+# # ### 7.1 Update Backend Configuration
+# # 
+# # Update the bucket name in all three environment backend files:
+# # 
+# # **`envs/dev/backend.tf`**
+# # ```hcl
+# # terraform {
+# #   backend "s3" {
+# #     bucket       = "zen-pharma-terraform-state-ravibhadarge"
+# #     key          = "envs/dev/terraform.tfstate"
+# #     region       = "us-east-1"
+# #     encrypt      = true
+# #     use_lockfile = true
+# #   }
+# # }
+# ```
+# 
+# **`envs/qa/backend.tf`** — same change, key stays `envs/qa/terraform.tfstate`
+# 
+# **`envs/prod/backend.tf`** — same change, key stays `envs/prod/terraform.tfstate`
+# 
+# ### 7.2 Update GitHub Organisation Variable
+# 
+# In `envs/dev/variables.tf`, update the default value for `github_org`:
+# 
+# ```hcl
+# variable "github_org" {
+#   description = "GitHub username or organization"
+#   type        = string
+#   default     = "ravibhadarge"   # ← change this
+# }
 ```
 
 Do the same in `envs/qa/variables.tf` and `envs/prod/variables.tf`.
@@ -448,7 +448,7 @@ In `.github/workflows/terraform.yml`, update the `github_org` value:
   run: |
     terraform plan \
       -var="db_password=${{ secrets.DEV_DB_PASSWORD }}" \
-      -var="jwt_secret=${{ secrets.DEV_JWT_SECRET }}" \
+# #       -var="jwt_secret=${{ secrets.DEV_JWT_SECRET }}" \
       -var="github_org=ravibhadarge" \    # ← change this
       -out=tfplan \
       -no-color
@@ -719,7 +719,7 @@ cd envs/dev
 terraform init
 terraform plan \
   -var="db_password=test" \
-  -var="jwt_secret=test"
+# #   -var="jwt_secret=test"
 
 # 4. Push and open a PR
 git add .
@@ -751,195 +751,195 @@ Open a PR, review the plan (should show EKS node group update), merge, approve a
 Edit `envs/dev/main.tf`:
 
 ```hcl
-module "ecr" {
-  ...
-  repositories = [
-    "api-gateway",
-    "auth-service",
-    "pharma-ui",
-    "notification-service",
-    "drug-catalog-service",
-    "new-service"            # ← add here
-  ]
-}
-```
-
-Plan will show 2 new resources: `aws_ecr_repository.main["new-service"]` and its lifecycle policy.
-
-### Checking State
-
-```bash
-cd envs/dev
-
-# List all resources in state
-terraform state list
-
-# Inspect a specific resource
-terraform state show module.eks.aws_eks_cluster.main
-
-# Check for drift (what changed in AWS outside Terraform)
-terraform plan \
-  -var="db_password=dummy" \
-  -var="jwt_secret=dummy"
-```
-
----
-
-## 14. Destroying Infrastructure
-
-> **Warning**: This permanently deletes all infrastructure including the EKS cluster, RDS database, and all data. There is no undo.
-
-### Via Pipeline (Recommended)
-
-1. Go to your fork on GitHub → **Actions**
-2. Select **Terraform Infrastructure** workflow
-3. Click **Run workflow**
-4. Set:
-   - **Terraform action**: `destroy`
-   - **Type "destroy" to confirm**: `destroy`
-5. Click **Run workflow**
-6. The destroy job will pause for approval — review then approve
-7. Wait 15–25 minutes for all resources to be deleted
-
-### Locally (Alternative)
-
-```bash
-cd envs/dev
-terraform init
-terraform destroy \
-  -var="db_password=dummy" \
-  -var="jwt_secret=dummy" \
-  -var="github_org=ravibhadarge"
-```
-
-Type `yes` when prompted.
-
-### After Destroying
-
-The S3 state bucket is **not** deleted by Terraform destroy — it is managed separately. To delete it:
-
-```bash
-# Empty the bucket first
-aws s3 rm s3://zen-pharma-terraform-state-ravibhadarge --recursive
-
-# Delete the bucket
-aws s3api delete-bucket \
-  --bucket zen-pharma-terraform-state-ravibhadarge \
-  --region us-east-1
-```
-
----
-
-## 15. Troubleshooting
-
-### Plan shows resources already exist (RepositoryAlreadyExistsException)
-
-ECR repositories cannot be destroyed if they contain images. If you recreated the stack after a destroy, images may still exist in the repos.
-
-**Fix — delete repos manually then re-run:**
-```bash
-for repo in api-gateway auth-service pharma-ui notification-service drug-catalog-service; do
-  aws ecr delete-repository \
-    --repository-name $repo \
-    --force \
-    --region us-east-1
-done
-```
-
-Then re-trigger the pipeline.
-
-### Apply failed halfway through
-
-Do not panic. Terraform updates state for every resource it successfully creates.
-
-1. Read the error in the Actions logs (expand the Apply step, scroll up from the bottom)
-2. Fix the root cause
-3. Re-trigger the pipeline — it will continue from where it left off
-
-### State lock error
-
-```
-Error: Error acquiring the state lock
-```
-
-Another apply is running (or a previous one crashed mid-run). Wait for it to finish. If you are certain no apply is running:
-
-```bash
-cd envs/dev
-terraform force-unlock <LOCK-ID>
-# Lock ID is shown in the error message
-```
-
-### `terraform init` fails — bucket does not exist
-
-You have not created the S3 bucket yet. Follow [Step 2](#5-step-2--s3-state-backend-setup).
-
-### EKS nodes not joining the cluster
-
-```bash
-kubectl get nodes
-# Shows nodes in NotReady state
-```
-
-Check node group IAM role has the required policies:
-- `AmazonEKSWorkerNodePolicy`
-- `AmazonEKS_CNI_Policy`
-- `AmazonEC2ContainerRegistryReadOnly`
-
-These are attached automatically by Terraform. If nodes are not joining, the apply may not have completed fully — check the apply logs.
-
-### Pipeline apply job is skipped
-
-The apply job only runs on:
-- Push/merge to `main` when `envs/dev/**` or `modules/**` files changed
-- Manual `workflow_dispatch` with `action: apply`
-
-If you only changed workflow files (`.github/workflows/`), the `paths` filter prevents the pipeline from triggering.
-
-### Cannot connect to EKS cluster locally
-
-```bash
-# Re-fetch credentials
-aws eks update-kubeconfig --region us-east-1 --name pharma-dev-cluster
-
-# Check your AWS identity
-aws sts get-caller-identity
-
-# Verify cluster is active
-aws eks describe-cluster --name pharma-dev-cluster --query 'cluster.status'
-```
-
-Only the IAM entity that created the cluster (the CI/CD role or your local user) has access by default. If using a different IAM user locally, you need to add it to the EKS aws-auth ConfigMap.
-
----
-
-## Cost Estimate (Dev Environment)
-
-| Resource | Approximate Cost |
-|---|---|
-| EKS Cluster | ~$0.10/hour (~$72/month) |
-| 3x t3.small EC2 nodes | ~$0.06/hour (~$43/month) |
-| RDS db.t3.micro | ~$0.02/hour (~$14/month) |
-| NAT Gateway | ~$0.045/hour (~$32/month) + data transfer |
-| ECR Storage | ~$0.10/GB/month (minimal) |
-| Secrets Manager | ~$0.40/secret/month (2 secrets = ~$0.80) |
-| **Total estimate** | **~$160–180/month** |
-
-> **Tip for learners**: Destroy the infrastructure when not in use. EKS and NAT Gateway are the largest costs. Use the destroy pipeline at the end of each day and re-provision when needed.
-
----
-
-*This guide covers the dev environment. QA and prod environments follow the same setup process — create the GitHub environments with appropriate protection rules and add the corresponding secrets (`QA_DB_PASSWORD`, `QA_JWT_SECRET`, etc.).*
-
----
-
-## 16. Interview Preparation
-
-After completing this lab you have built and deployed real infrastructure — not watched a demo. Dedicated interview preparation documents are available in the `docs/` folder:
-
-- [Terraform Interview Questions](docs/terraform-interview-questions.md) — 40 questions covering core concepts, state management, modules, CI/CD pipeline, and real-world scenarios with zen-infra references
-- GitHub Actions Interview Questions — coming soon
-
----
-
-*Built with Terraform 1.10+ · GitHub Actions · AWS EKS, RDS, ECR, VPC, IAM, Secrets Manager*
+# # module "ecr" {
+# #   ...
+# #   repositories = [
+# #     "api-gateway",
+# #     "auth-service",
+# #     "pharma-ui",
+# #     "notification-service",
+# #     "drug-catalog-service",
+# #     "new-service"            # ← add here
+# #   ]
+# # }
+# ```
+# 
+# Plan will show 2 new resources: `aws_ecr_repository.main["new-service"]` and its lifecycle policy.
+# 
+# ### Checking State
+# 
+# ```bash
+# cd envs/dev
+# 
+# # List all resources in state
+# terraform state list
+# 
+# # Inspect a specific resource
+# terraform state show module.eks.aws_eks_cluster.main
+# 
+# # Check for drift (what changed in AWS outside Terraform)
+# terraform plan \
+#   -var="db_password=dummy" \
+# # #   -var="jwt_secret=dummy"
+# ```
+# 
+# ---
+# 
+# ## 14. Destroying Infrastructure
+# 
+# > **Warning**: This permanently deletes all infrastructure including the EKS cluster, RDS database, and all data. There is no undo.
+# 
+# ### Via Pipeline (Recommended)
+# 
+# 1. Go to your fork on GitHub → **Actions**
+# 2. Select **Terraform Infrastructure** workflow
+# 3. Click **Run workflow**
+# 4. Set:
+#    - **Terraform action**: `destroy`
+#    - **Type "destroy" to confirm**: `destroy`
+# 5. Click **Run workflow**
+# 6. The destroy job will pause for approval — review then approve
+# 7. Wait 15–25 minutes for all resources to be deleted
+# 
+# ### Locally (Alternative)
+# 
+# ```bash
+# cd envs/dev
+# terraform init
+# terraform destroy \
+#   -var="db_password=dummy" \
+# # #   -var="jwt_secret=dummy" \
+#   -var="github_org=ravibhadarge"
+# ```
+# 
+# Type `yes` when prompted.
+# 
+# ### After Destroying
+# 
+# The S3 state bucket is **not** deleted by Terraform destroy — it is managed separately. To delete it:
+# 
+# ```bash
+# # Empty the bucket first
+# aws s3 rm s3://zen-pharma-terraform-state-ravibhadarge --recursive
+# 
+# # Delete the bucket
+# aws s3api delete-bucket \
+#   --bucket zen-pharma-terraform-state-ravibhadarge \
+#   --region us-east-1
+# ```
+# 
+# ---
+# 
+# ## 15. Troubleshooting
+# 
+# ### Plan shows resources already exist (RepositoryAlreadyExistsException)
+# 
+# ECR repositories cannot be destroyed if they contain images. If you recreated the stack after a destroy, images may still exist in the repos.
+# 
+# **Fix — delete repos manually then re-run:**
+# ```bash
+# for repo in api-gateway auth-service pharma-ui notification-service drug-catalog-service; do
+#   aws ecr delete-repository \
+#     --repository-name $repo \
+#     --force \
+#     --region us-east-1
+# done
+# ```
+# 
+# Then re-trigger the pipeline.
+# 
+# ### Apply failed halfway through
+# 
+# Do not panic. Terraform updates state for every resource it successfully creates.
+# 
+# 1. Read the error in the Actions logs (expand the Apply step, scroll up from the bottom)
+# 2. Fix the root cause
+# 3. Re-trigger the pipeline — it will continue from where it left off
+# 
+# ### State lock error
+# 
+# ```
+# Error: Error acquiring the state lock
+# ```
+# 
+# Another apply is running (or a previous one crashed mid-run). Wait for it to finish. If you are certain no apply is running:
+# 
+# ```bash
+# cd envs/dev
+# terraform force-unlock <LOCK-ID>
+# # Lock ID is shown in the error message
+# ```
+# 
+# ### `terraform init` fails — bucket does not exist
+# 
+# You have not created the S3 bucket yet. Follow [Step 2](#5-step-2--s3-state-backend-setup).
+# 
+# ### EKS nodes not joining the cluster
+# 
+# ```bash
+# kubectl get nodes
+# # Shows nodes in NotReady state
+# ```
+# 
+# Check node group IAM role has the required policies:
+# - `AmazonEKSWorkerNodePolicy`
+# - `AmazonEKS_CNI_Policy`
+# - `AmazonEC2ContainerRegistryReadOnly`
+# 
+# These are attached automatically by Terraform. If nodes are not joining, the apply may not have completed fully — check the apply logs.
+# 
+# ### Pipeline apply job is skipped
+# 
+# The apply job only runs on:
+# - Push/merge to `main` when `envs/dev/**` or `modules/**` files changed
+# - Manual `workflow_dispatch` with `action: apply`
+# 
+# If you only changed workflow files (`.github/workflows/`), the `paths` filter prevents the pipeline from triggering.
+# 
+# ### Cannot connect to EKS cluster locally
+# 
+# ```bash
+# # Re-fetch credentials
+# aws eks update-kubeconfig --region us-east-1 --name pharma-dev-cluster
+# 
+# # Check your AWS identity
+# aws sts get-caller-identity
+# 
+# # Verify cluster is active
+# aws eks describe-cluster --name pharma-dev-cluster --query 'cluster.status'
+# ```
+# 
+# Only the IAM entity that created the cluster (the CI/CD role or your local user) has access by default. If using a different IAM user locally, you need to add it to the EKS aws-auth ConfigMap.
+# 
+# ---
+# 
+# ## Cost Estimate (Dev Environment)
+# 
+# | Resource | Approximate Cost |
+# |---|---|
+# | EKS Cluster | ~$0.10/hour (~$72/month) |
+# | 3x t3.small EC2 nodes | ~$0.06/hour (~$43/month) |
+# | RDS db.t3.micro | ~$0.02/hour (~$14/month) |
+# | NAT Gateway | ~$0.045/hour (~$32/month) + data transfer |
+# | ECR Storage | ~$0.10/GB/month (minimal) |
+# | Secrets Manager | ~$0.40/secret/month (2 secrets = ~$0.80) |
+# | **Total estimate** | **~$160–180/month** |
+# 
+# > **Tip for learners**: Destroy the infrastructure when not in use. EKS and NAT Gateway are the largest costs. Use the destroy pipeline at the end of each day and re-provision when needed.
+# 
+# ---
+# 
+# *This guide covers the dev environment. QA and prod environments follow the same setup process — create the GitHub environments with appropriate protection rules and add the corresponding secrets (`QA_DB_PASSWORD`, `QA_JWT_SECRET`, etc.).*
+# 
+# ---
+# 
+# ## 16. Interview Preparation
+# 
+# After completing this lab you have built and deployed real infrastructure — not watched a demo. Dedicated interview preparation documents are available in the `docs/` folder:
+# 
+# - [Terraform Interview Questions](docs/terraform-interview-questions.md) — 40 questions covering core concepts, state management, modules, CI/CD pipeline, and real-world scenarios with zen-infra references
+# - GitHub Actions Interview Questions — coming soon
+# 
+# ---
+# 
+# *Built with Terraform 1.10+ · GitHub Actions · AWS EKS, RDS, ECR, VPC, IAM, Secrets Manager*

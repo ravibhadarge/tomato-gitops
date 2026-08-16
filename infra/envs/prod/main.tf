@@ -1,5 +1,5 @@
 locals {
-  project = "pharma"
+  project = "tomato"
   env     = "prod"
   region  = "us-east-1"
 }
@@ -37,7 +37,7 @@ module "rds" {
 
   project                    = local.project
   env                        = local.env
-  username                   = "pharmaadmin"
+  username                   = "tomatoadmin"
   password                   = var.db_password
   vpc_id                     = module.vpc.vpc_id
   db_subnet_group_name       = module.vpc.database_subnet_group_name
@@ -48,41 +48,41 @@ module "rds" {
   deletion_protection        = true
 }
 
-module "ecr" {
-  source = "../../modules/ecr"
-
-  project = local.project
-  env     = local.env
-  repositories = [
-    "api-gateway",
-    "auth-service",
-    "drug-catalog-service",
-    "inventory-service",
-    "manufacturing-service",
-    "notification-service",
-    "pharma-ui",
-    "supplier-service",
-  ]
-}
-
-module "iam" {
-  source = "../../modules/iam"
-
-  project           = local.project
-  env               = local.env
-  oidc_provider_arn = module.eks.oidc_provider_arn
-  oidc_provider_url = module.eks.cluster_oidc_issuer_url
-  aws_account_id    = data.aws_caller_identity.current.account_id
-  github_org        = var.github_org
-}
+# # module "ecr" {
+# #   source = "../../modules/ecr"
+# # 
+# #   project = local.project
+# #   env     = local.env
+# #   repositories = [
+# #     "api-gateway",
+# #     "auth-service",
+# #     "drug-catalog-service",
+# #     "inventory-service",
+# #     "manufacturing-service",
+# #     "notification-service",
+# #     "tomato-ui",
+# #     "supplier-service",
+# #   ]
+# # }
+# 
+# module "iam" {
+#   source = "../../modules/iam"
+# 
+#   project           = local.project
+#   env               = local.env
+#   oidc_provider_arn = module.eks.oidc_provider_arn
+#   oidc_provider_url = module.eks.cluster_oidc_issuer_url
+#   aws_account_id    = data.aws_caller_identity.current.account_id
+#   github_org        = var.github_org
+# }
 
 module "secrets_manager" {
   source = "../../modules/secrets-manager"
 
   project     = local.project
   env         = local.env
-  db_username = "pharmaadmin"
+  db_username = "tomatoadmin"
   db_password = var.db_password
   db_host     = module.rds.db_instance_address
-  jwt_secret  = var.jwt_secret
+  #   #   jwt_secret  = var.jwt_secret
 }

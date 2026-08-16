@@ -24,6 +24,6 @@ variable "aws_account_id" {
 }
 
 variable "github_org" {
-  description = "GitHub organization or username that owns zen-pharma-frontend and zen-pharma-backend"
+  description = "GitHub organization or username that owns zen-tomato-frontend and zen-tomato-backend"
   type        = string
 }
