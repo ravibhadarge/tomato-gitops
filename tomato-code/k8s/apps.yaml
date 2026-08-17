@@ -17,6 +17,11 @@ spec:
       - name: auth
         image: ravibhadarge/tomato-auth:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,6 +42,11 @@ spec:
       - name: restaurant
         image: ravibhadarge/tomato-restaurant:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,6 +67,11 @@ spec:
       - name: rider
         image: ravibhadarge/tomato-rider:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -77,6 +92,11 @@ spec:
       - name: utils
         image: ravibhadarge/tomato-utils:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -97,6 +117,11 @@ spec:
       - name: realtime
         image: ravibhadarge/tomato-realtime:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -117,3 +142,8 @@ spec:
       - name: admin
         image: ravibhadarge/tomato-admin:v1.0.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: tomato-config
+        - secretRef:
+            name: tomato-secret
