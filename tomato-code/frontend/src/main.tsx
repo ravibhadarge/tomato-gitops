@@ -16,7 +16,7 @@ export const adminService = "/admin";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId="301605069487-dgr3h7m4cudj4iu9avm7u0ufp6tt0k3u.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <AppProvider>
         <SocketProvider>
           <App />
