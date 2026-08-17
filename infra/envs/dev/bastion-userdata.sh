@@ -1,82 +1,85 @@
 #!/bin/bash
-set -eux
+set -e
 
-# Update
-yum update -y
+echo "=== Update ==="
+sudo dnf update -y
 
-# Basic tools
-yum install -y git jq unzip wget curl vim docker java-17-amazon-corretto-devel
+echo "=== Base Tools ==="
+sudo dnf install -y \
+git jq wget vim unzip tar \
+python3 python3-pip \
+maven docker \
+dnf-plugins-core
 
-systemctl enable docker
-systemctl start docker
+echo "=== Java 21 ==="
+sudo dnf install -y java-21-amazon-corretto-devel
 
-# AWS CLI
-curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
-unzip -q awscliv2.zip
-./aws/install
+sudo alternatives --set java \
+/usr/lib/jvm/java-21-amazon-corretto/bin/java
 
-# kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+echo 'export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto' | sudo tee /etc/profile.d/java.sh
+echo 'export PATH=$JAVA_HOME/bin:$PATH' | sudo tee -a /etc/profile.d/java.sh
+
+source /etc/profile.d/java.sh
+
+echo "=== Node.js 22 LTS ==="
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+sudo dnf install -y nodejs
+
+echo "=== Docker ==="
+sudo systemctl enable docker
+sudo systemctl start docker
+
+echo "=== GitHub CLI ==="
+sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo rpm --import https://cli.github.com/packages/githubcli-archive-keyring.asc
+sudo dnf install -y gh
+
+echo "=== kubectl ==="
+curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod +x kubectl
-mv kubectl /usr/local/bin/
+sudo mv kubectl /usr/local/bin/
 
-# Helm
+echo "=== Helm ==="
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# Terraform
-wget -q https://releases.hashicorp.com/terraform/1.13.1/terraform_1.13.1_linux_amd64.zip
-unzip -oq terraform_1.13.1_linux_amd64.zip
-mv terraform /usr/local/bin/
+echo "=== Terraform ==="
+TF_VERSION="1.13.1"
+curl -L -o terraform.zip \
+https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
 
-# eksctl
+unzip -o terraform.zip
+sudo mv terraform /usr/local/bin/
+
+echo "=== eksctl ==="
 curl --silent --location \
 https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz \
 | tar xz -C /tmp
-mv /tmp/eksctl /usr/local/bin/
 
-# ArgoCD CLI
-curl -sSL -o /usr/local/bin/argocd \
+sudo mv /tmp/eksctl /usr/local/bin/
+
+echo "=== ArgoCD CLI ==="
+sudo curl -sSL \
+-o /usr/local/bin/argocd \
 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-chmod +x /usr/local/bin/argocd
 
-# k9s
-curl -sL https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz \
-| tar -xz
-mv k9s /usr/local/bin/
+sudo chmod +x /usr/local/bin/argocd
 
-# Jenkins CLI
-wget -q -O /usr/local/bin/jenkins-cli.jar \
-https://updates.jenkins.io/latest/jenkins-cli.jar
+echo
+echo "=========== VERIFY ==========="
 
-# Create helper install script
-cat >/home/ec2-user/install-platform.sh <<'SCRIPT'
-#!/bin/bash
-set -e
+java -version
+mvn -version
+node -v
+npm -v
+docker --version
+python3 --version
+gh --version
+kubectl version --client
+helm version
+terraform version
+argocd version --client
+eksctl version
 
-# Jenkins
-helm repo add jenkins https://charts.jenkins.io
-helm repo update
-
-helm upgrade --install jenkins jenkins/jenkins \
-  -n jenkins \
-  --create-namespace \
-  --set controller.admin.username=admin \
-  --set controller.admin.password='Admin@123'
-
-# RabbitMQ
-helm repo add bitnami https://charts.bitnami.com/bitnami
-
-helm upgrade --install rabbitmq bitnami/rabbitmq \
-  -n rabbitmq \
-  --create-namespace \
-  --set auth.username=admin \
-  --set auth.password='Admin@123' \
-  --set auth.erlangCookie='RabbitCookie123'
-
-echo "Done"
-SCRIPT
-
-chmod +x /home/ec2-user/install-platform.sh
-chown ec2-user:ec2-user /home/ec2-user/install-platform.sh
-
-echo "Bastion Ready" > /tmp/bastion-ready.txt
+echo
+echo "✅ DevOps Bastion Ready"

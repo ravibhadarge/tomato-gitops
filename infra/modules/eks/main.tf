@@ -9,7 +9,7 @@ module "eks" {
   subnet_ids = var.subnet_ids
 
   endpoint_private_access = true
-  endpoint_public_access  = true
+  endpoint_public_access  = false
 
   enable_irsa                              = true
   enable_cluster_creator_admin_permissions = true
