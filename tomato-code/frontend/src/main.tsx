@@ -7,7 +7,7 @@ import { AppProvider } from "./context/AppContext.tsx";
 import "leaflet/dist/leaflet.css";
 import { SocketProvider } from "./context/SocketContext.tsx";
 
-export const authService = "";
+export const authService = "/auth";
 export const restaurantService = "/restaurant";
 export const riderService = "/rider";
 export const utilsService = "/utils";
