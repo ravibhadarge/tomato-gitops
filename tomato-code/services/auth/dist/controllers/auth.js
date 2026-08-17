@@ -16,7 +16,7 @@ export const loginUser = TryCatch(async (req, res) => {
         console.log("TOKEN SUCCESS");
     }
     catch (err) {
-        console.error("TOKEN ERROR:", err);
+        console.error("TOKEN ERROR FULL:", err);
         throw err;
     }
     oauth2client.setCredentials(googleRes.tokens);

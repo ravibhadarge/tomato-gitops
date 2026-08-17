@@ -19,7 +19,7 @@ try {
   googleRes = await oauth2client.getToken(code);
   console.log("TOKEN SUCCESS");
 } catch (err) {
-  console.error("TOKEN ERROR:", err);
+  console.error("TOKEN ERROR FULL:", err);
   throw err;
 }
 
