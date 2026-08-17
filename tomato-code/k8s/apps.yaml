@@ -21,7 +21,7 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,7 +46,7 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -71,7 +71,7 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -96,7 +96,7 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -121,7 +121,7 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -146,4 +146,4 @@ spec:
         - configMapRef:
             name: tomato-config
         - secretRef:
-            name: tomato-secret
+            name: tomato-secret-vault
