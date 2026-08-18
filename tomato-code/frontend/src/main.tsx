@@ -9,10 +9,10 @@ import { SocketProvider } from "./context/SocketContext.tsx";
 
 export const authService = "";
 export const restaurantService = "";
-export const riderService = "/rider";
-export const utilsService = "/utils";
+export const riderService = "";
+export const utilsService = "";
 export const realtimeService = "";
-export const adminService = "/admin";
+export const adminService = "";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
