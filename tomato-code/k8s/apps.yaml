@@ -72,6 +72,9 @@ spec:
             name: tomato-config
         - secretRef:
             name: tomato-secret-vault
+        env:
+        - name: PORT
+          value: '5005'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -147,3 +150,6 @@ spec:
             name: tomato-config
         - secretRef:
             name: tomato-secret-vault
+        env:
+        - name: PORT
+          value: '5006'
