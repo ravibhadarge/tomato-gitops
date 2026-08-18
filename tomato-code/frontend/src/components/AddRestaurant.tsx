@@ -19,41 +19,75 @@ const AddRestaurant = ({ fetchMyRestaurant }: props) => {
   const { loadingLocation, location } = useAppData();
 
   const handleSubmit = async () => {
-    if (!name || !image || !location) {
-      alert("All field are required");
+    if (!name.trim()) {
+      toast.error("Restaurant name is required");
       return;
     }
 
-    const formData = new FormData();
+    if (!phone.trim()) {
+      toast.error("Contact number is required");
+      return;
+    }
 
-    formData.append("name", name);
-    formData.append("description", description);
-    formData.append("latitude", String(location.latitude));
-    formData.append("longitude", String(location.longitude));
-    formData.append("formattedAddress", location.formattedAddress);
-    formData.append("file", image);
-    formData.append("phone", phone);
+    if (!description.trim()) {
+      toast.error("Restaurant description is required");
+      return;
+    }
+
+    if (!image) {
+      toast.error("Restaurant image is required");
+      return;
+    }
+
+    if (loadingLocation) {
+      toast.error("Please wait while we fetch your location");
+      return;
+    }
+
+    if (!location) {
+      toast.error("Location is required. Please allow location access.");
+      return;
+    }
 
     try {
       setSubmitting(true);
-      await axios.post(`${restaurantService}/api/restaurant/new`, formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("description", description.trim());
+      formData.append("phone", phone.trim());
+      formData.append("latitude", String(location.latitude));
+      formData.append("longitude", String(location.longitude));
+      formData.append("formattedAddress", location.formattedAddress);
+      formData.append("file", image);
+
+      await axios.post(
+        `${restaurantService}/api/restaurant/new`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       toast.success("Restaurant Added successfully");
-      fetchMyRestaurant();
+      await fetchMyRestaurant();
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      console.error("Add restaurant error:", error);
+      toast.error(
+        error?.response?.data?.message || "Failed to add restaurant"
+      );
     } finally {
       setSubmitting(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto max-w-lg rounded-xl bg-white p-6 shadow-sm space-y-5">
         <h1 className="text-xl font-semibold">Add Your Restaurant</h1>
+
         <input
           type="text"
           placeholder="Restaurant name"
@@ -61,13 +95,15 @@ const AddRestaurant = ({ fetchMyRestaurant }: props) => {
           onChange={(e) => setName(e.target.value)}
           className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
         />
+
         <input
-          type="number"
+          type="tel"
           placeholder="Contact Number"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
         />
+
         <textarea
           placeholder="Restaurant Description"
           value={description}
@@ -86,21 +122,25 @@ const AddRestaurant = ({ fetchMyRestaurant }: props) => {
           />
         </label>
 
-        <div className="flex items-start gap-3 rounded-lg boder p-4">
+        <div className="flex items-start gap-3 rounded-lg border p-4">
           <BiMapPin className="mt-0.5 h-5 w-5 text-red-500" />
           <div className="text-sm">
             {loadingLocation
-              ? "Fetching you location..."
+              ? "Fetching your location..."
               : location?.formattedAddress || "Location not available"}
           </div>
         </div>
 
         <button
-          className="w-full rounded-lg py-3 text-sm font-semibold text-white bg-[#e23744]"
-          disabled={submitting}
+          className="w-full rounded-lg py-3 text-sm font-semibold text-white bg-[#e23744] disabled:opacity-50"
+          disabled={submitting || loadingLocation}
           onClick={handleSubmit}
         >
-          {submitting ? "Submitting..." : "Add Restaurant"}
+          {loadingLocation
+            ? "Fetching your location..."
+            : submitting
+            ? "Submitting..."
+            : "Add Restaurant"}
         </button>
       </div>
     </div>
