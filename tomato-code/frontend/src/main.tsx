@@ -8,10 +8,10 @@ import "leaflet/dist/leaflet.css";
 import { SocketProvider } from "./context/SocketContext.tsx";
 
 export const authService = "";
-export const restaurantService = "/restaurant";
+export const restaurantService = "";
 export const riderService = "/rider";
 export const utilsService = "/utils";
-export const realtimeService = "/realtime";
+export const realtimeService = "";
 export const adminService = "/admin";
 
 createRoot(document.getElementById("root")!).render(
