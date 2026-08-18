@@ -76,42 +76,59 @@ export const AppProvider = ({ children }: AppProviderProps) => {
   }, [user]);
 
   useEffect(() => {
-    if (!navigator.geolocation)
-      return alert("Please Allow Location to continue");
+    if (!navigator.geolocation) {
+      setLoadingLocation(false);
+      return;
+    }
+
     setLoadingLocation(true);
 
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
 
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-        );
-        const data = await res.json();
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
 
-        setLocation({
-          latitude,
-          longitude,
-          formattedAddress: data.display_name || "current location",
-        });
+          setLocation({
+            latitude,
+            longitude,
+            formattedAddress: data.display_name || "Current Location",
+          });
 
-        setCity(
-          data.address.city ||
-            data.address.town ||
-            data.address.village ||
-            "Your Location"
-        );
+          setCity(
+            data.address?.city ||
+              data.address?.town ||
+              data.address?.village ||
+              "Your Location"
+          );
+        } catch (error) {
+          console.error("Location address error:", error);
+
+          setLocation({
+            latitude,
+            longitude,
+            formattedAddress: "Current Location",
+          });
+          setCity("Your Location");
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
         setLoadingLocation(false);
-      } catch (error) {
-        setLocation({
-          latitude,
-          longitude,
-          formattedAddress: "Current Location",
-        });
-        setCity("Faild to load");
-        setLoadingLocation(false);
+        setCity("Location unavailable");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000,
       }
-    });
+    );
   }, []);
 
   return (
