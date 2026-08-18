@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ravibhadarge/tomato-frontend:2.3
+        image: ravibhadarge/tomato-frontend:2.4
 ---
 apiVersion: v1
 kind: Service
