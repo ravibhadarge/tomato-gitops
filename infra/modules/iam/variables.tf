@@ -27,3 +27,8 @@ variable "github_org" {
   description = "GitHub organization or username that owns zen-tomato-frontend and zen-tomato-backend"
   type        = string
 }
+
+variable "cluster_name" {
+  type = string
+}
+

@@ -39,6 +39,7 @@ module "iam" {
 
   project           = local.project
   env               = local.env
+  cluster_name      = "tomato-dev-cluster"
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_provider_url = module.eks.cluster_oidc_issuer_url
   aws_account_id    = data.aws_caller_identity.current.account_id
