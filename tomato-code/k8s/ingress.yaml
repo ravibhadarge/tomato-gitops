@@ -9,7 +9,6 @@ metadata:
 
 spec:
   ingressClassName: alb
-
   rules:
   - http:
       paths:
@@ -47,20 +46,14 @@ spec:
               number: 5002
 
       - path: /api/realtime
-          - path: /socket.io
-            pathType: Prefix
-            backend:
-              service:
-                name: realtime
-                port:
-                  number: 5004
-      - path: /socket.io
         pathType: Prefix
         backend:
           service:
             name: realtime
             port:
               number: 5004
+
+      - path: /socket.io
         pathType: Prefix
         backend:
           service:
@@ -83,4 +76,3 @@ spec:
             name: admin
             port:
               number: 5006
-
