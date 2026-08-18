@@ -10,6 +10,22 @@ import cors from "cors";
 import { connectRabbitMQ } from "./config/rabbitmq.js";
 import { startPaymentConsumer } from "./config/payment.consumer.js";
 dotenv.config();
+const requiredEnv = ["MONGO_URI","JWT_SEC"];
+requiredEnv.forEach((key)=>{
+if(!process.env[key]){
+console.error(`Missing env: ${key}`);
+process.exit(1);
+}
+});
+console.log("All required environment variables loaded");
+const requiredEnv = ["MONGO_URI","JWT_SEC"];
+requiredEnv.forEach((key)=>{
+if(!process.env[key]){
+console.error(`Missing env: ${key}`);
+process.exit(1);
+}
+});
+console.log("All required environment variables loaded");
 await connectRabbitMQ();
 startPaymentConsumer();
 const app = express();

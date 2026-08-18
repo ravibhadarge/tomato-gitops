@@ -6,6 +6,22 @@ import uploadRoutes from "./routes/cloudinary.js";
 import paymentRoutes from "./routes/payment.js";
 import { connectRabbitMQ } from "./config/rabbitmq.js";
 dotenv.config();
+const requiredEnv = ["MONGO_URI","JWT_SEC"];
+requiredEnv.forEach((key)=>{
+if(!process.env[key]){
+console.error(`Missing env: ${key}`);
+process.exit(1);
+}
+});
+console.log("All required environment variables loaded");
+const requiredEnv = ["MONGO_URI","JWT_SEC"];
+requiredEnv.forEach((key)=>{
+if(!process.env[key]){
+console.error(`Missing env: ${key}`);
+process.exit(1);
+}
+});
+console.log("All required environment variables loaded");
 connectRabbitMQ();
 const app = express();
 app.use(cors());
