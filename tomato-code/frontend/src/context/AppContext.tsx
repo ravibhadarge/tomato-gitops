@@ -124,7 +124,7 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         setCity("Location unavailable");
       },
       {
-        enableHighAccuracy: true,
+        enableHighAccuracy: false,
         timeout: 10000,
         maximumAge: 300000,
       }
